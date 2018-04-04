@@ -1,0 +1,5 @@
+.DS_Store
+*.DS_Store
+project/target
+target
+local_state_data

@@ -1,0 +1,30 @@
+version: '2'
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+      - "2888:2888"
+      - "3888:3888"
+  kafka:
+    build: .
+    ports:
+      - "9092:9092"
+    environment:
+      #export DOCKER_KAFKA_HOST=$(ipconfig getifaddr en0)
+      KAFKA_ADVERTISED_HOST_NAME: ${DOCKER_KAFKA_HOST}
+      KAFKA_ADVERTISED_LISTENERS: ${DOCKER_KAFKA_HOST}
+      KAFKA_ZOOKEEPER_CONNECT: ${DOCKER_KAFKA_HOST}:2181
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+#  schema_registry:
+#    image: confluentinc/cp-schema-registry
+#    hostname: schema_registry
+#    depends_on:
+#      - zookeeper
+#      - kafka
+#    ports:
+#      - "8081:8081"
+#    environment:
+#      SCHEMA_REGISTRY_HOST_NAME: schema_registry
+#      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: 'zookeeper:2181'
