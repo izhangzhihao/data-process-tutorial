@@ -9,6 +9,7 @@ libraryDependencies ++= Seq(
   "org.apache.kafka" % "kafka-streams" % "1.1.0",
   "com.lightbend" %% "kafka-streams-scala" % "0.2.0",
   //"com.lightbend" %% "kafka-streams-query" % "0.1.1",
+  "org.json4s" %% "json4s-jackson" % "3.5.3",
   "org.scalatest" %% "scalatest" % "3.0.5" % Test
 )
 
