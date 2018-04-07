@@ -29,12 +29,10 @@ object StockStream extends App {
 
   df.persist(StorageLevel.MEMORY_AND_DISK)
 
-  spark.sql("CREATE DATABASE IF NOT EXISTS db_stock_zhihao")
-  spark.sql("CREATE TABLE IF NOT EXISTS db_stock_zhihao.stock_parameters (key STRING, value STRING) USING HIVE")
-  spark.sql("CREATE TABLE IF NOT EXISTS db_stock_zhihao.stock_indexes (key STRING, type STRING, value DOUBLE, time TIMESTAMP) USING HIVE")
-
-  //implicit val tupleEncoder: Encoder[(String, String)] = org.apache.spark.sql.Encoders.tuple(Encoders.STRING, Encoders.STRING)
-  //implicit val tupleEncoder: Encoder[DataFrame] = ???
+  val hiveDb = "db_stock_zhihao"
+  spark.sql(s"CREATE DATABASE IF NOT EXISTS $hiveDb")
+  spark.sql(s"CREATE TABLE IF NOT EXISTS $hiveDb.stock_parameters (key STRING, value STRING) USING HIVE")
+  spark.sql(s"CREATE TABLE IF NOT EXISTS $hiveDb.stock_indexes (key STRING, type STRING, value DOUBLE, time TIMESTAMP) USING HIVE")
 
   case class Stock(key: String, value: String)
 
@@ -43,7 +41,7 @@ object StockStream extends App {
     .map { content =>
       val key = content.split(",")(0)
       val value = content
-      spark.sql(s"INSERT INTO db_stock_zhihao.stock_parameters VALUES ('$key', '$value')")
+      spark.sql(s"INSERT INTO $hiveDb.stock_parameters VALUES ('$key', '$value')")
 
       val indexs: Seq[(String, String, Double, String)] = List(
         (key,
@@ -58,7 +56,7 @@ object StockStream extends App {
 
       indexs.toDF().createOrReplaceTempView("stock_index_views")
 
-      spark.sql("INSERT INTO db_stock_zhihao.stock_indexes SELECT * FROM stock_index_views")
+      spark.sql(s"INSERT INTO $hiveDb.stock_indexes SELECT * FROM stock_index_views")
       indexs
     }
 
