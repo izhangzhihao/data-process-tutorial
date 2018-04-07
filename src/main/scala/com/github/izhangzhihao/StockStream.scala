@@ -1,7 +1,13 @@
 package com.github.izhangzhihao
 
+import java.util.concurrent.Executors
+
 import org.apache.spark.sql._
+import org.apache.spark.sql.streaming.StreamingQuery
 import org.apache.spark.storage.StorageLevel
+
+import scala.concurrent.JavaConversions.asExecutionContext
+import scala.concurrent.{ExecutionContextExecutorService, Future}
 
 /**
   * https://www.zybuluo.com/yangzhou/note/1052477
@@ -34,7 +40,7 @@ object StockStream extends App {
   spark.sql(s"CREATE TABLE IF NOT EXISTS $hiveDb.stock_parameters (key STRING, value STRING) USING HIVE")
   spark.sql(s"CREATE TABLE IF NOT EXISTS $hiveDb.stock_indexes (key STRING, type STRING, value DOUBLE, time TIMESTAMP) USING HIVE")
 
-  case class Stock(key: String, value: String)
+  case class Stock(key: String, `type`: String, value: Double, split: String)
 
   val result = df.selectExpr("CAST(value AS STRING)")
     .as[String]
@@ -43,12 +49,12 @@ object StockStream extends App {
       val value = content
       spark.sql(s"INSERT INTO $hiveDb.stock_parameters VALUES ('$key', '$value')")
 
-      val indexs: Seq[(String, String, Double, String)] = List(
-        (key,
+      val indexs: Seq[Stock] = List(
+        Stock(key,
           "AMO",
           AmoStockIndex.getValue(value.split(",")),
           value.split(",")(32)),
-        (key,
+        Stock(key,
           "OBV",
           ObvStockIndex.getValue(value.split(",")),
           value.split(",")(32))
@@ -62,12 +68,34 @@ object StockStream extends App {
 
   result.printSchema()
 
-  result
-    .selectExpr("CAST(key AS STRING) AS key", "to_json(struct(*)) AS value")
+  //  root
+  //  |-- value: array (nullable = false)
+  //  |    |-- element: struct (containsNull = true)
+  //  |    |    |-- key: string (nullable = true)
+  //  |    |    |-- type: string (nullable = true)
+  //  |    |    |-- value: double (nullable = false)
+  //  |    |    |-- split: string (nullable = true)
+
+
+  import org.apache.spark.sql.functions._
+
+  val streamingQuery: StreamingQuery = result
+    //.selectExpr($"value".getItem("_1").as('key), "to_json(struct(*)) AS value")
+    //.select('value.getItem("element").getItem("_1") as 'key, to_json(struct('value.getItem("element").getItem("*"))) as 'value)
+    .select(explode('value))
+    .select($"col.key" as 'key, $"col.value" as 'value)
+    .as[(String, String)]
     .writeStream
     .format("kafka")
     .option("kafka.bootstrap.servers", "hdp2:6667,hdp3:6667,hdp4:6667")
     .option("topic", "stock-indexes_zhihao")
     .option("checkpointLocation", "hdfs:/user/zhihao/kafkaCheckPoint")
     .start()
+
+  streamingQuery.explain()
+
+  implicit val context: ExecutionContextExecutorService = asExecutionContext(Executors.newSingleThreadExecutor())
+  val eventual = Future {
+    streamingQuery.awaitTermination()
+  }
 }
