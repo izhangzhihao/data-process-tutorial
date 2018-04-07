@@ -36,6 +36,7 @@ object StructuredStreamingWithKafka extends App {
   val kvStream: StreamingQuery =
     value
       .writeStream
+      //.option("checkpointLocation", "/tmp/checkpoint")
       .queryName("kv")
       .format("memory")
       .outputMode("append")
