@@ -80,11 +80,9 @@ object StockStream extends App {
   import org.apache.spark.sql.functions._
 
   val streamingQuery: StreamingQuery = result
-    //.selectExpr($"value".getItem("_1").as('key), "to_json(struct(*)) AS value")
-    //.select('value.getItem("element").getItem("_1") as 'key, to_json(struct('value.getItem("element").getItem("*"))) as 'value)
     .select(explode('value))
-    .select($"col.key" as 'key, $"col.value" as 'value)
-    .as[(String, String)]
+    .select($"col.key" as 'key, struct($"col.*") as 'value)
+    .as[(String, Stock)]
     .writeStream
     .format("kafka")
     .option("kafka.bootstrap.servers", "hdp2:6667,hdp3:6667,hdp4:6667")
