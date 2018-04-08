@@ -4,8 +4,6 @@ import java.net.InetAddress
 import java.util.concurrent.Executors
 
 import org.apache.spark.sql._
-import org.apache.spark.sql.streaming.StreamingQuery
-import org.apache.spark.storage.StorageLevel
 
 import scala.concurrent.JavaConversions.asExecutionContext
 import scala.concurrent.{ExecutionContextExecutorService, Future}
@@ -34,8 +32,6 @@ object StockStream extends App {
       .load()
   df.printSchema()
 
-  //df.persist(StorageLevel.MEMORY_ONLY)
-
   case class Stock(key: String, `type`: String, value: Double, split: String)
 
   val result = df.selectExpr("CAST(value AS STRING)")
@@ -44,7 +40,7 @@ object StockStream extends App {
       val key = content.split(",")(0)
       val value = content
 
-      val indexs: Seq[Stock] = List(
+      List(
         Stock(key,
           "AMO",
           AmoStockIndex.getValue(value.split(",")),
@@ -54,7 +50,6 @@ object StockStream extends App {
           ObvStockIndex.getValue(value.split(",")),
           value.split(",")(32))
       )
-      indexs
     }
 
   result.printSchema()
@@ -72,8 +67,8 @@ object StockStream extends App {
 
   val streamingQuery = result
     .select(explode('value))
-    .select($"col.key" as 'key, $"col.value" as 'value)
-    .as[(String, Double)]
+    .select($"col.key" as 'key, struct($"col.*") as 'value)
+    .as[(String, Stock)]
     .writeStream
     .queryName("kv")
     .format("memory")
@@ -88,11 +83,10 @@ object StockStream extends App {
     }
   }
 
-  streamingQuery.explain()
-  println()
+  for (_ <- 0 to 10) {
+    Thread.sleep(1000)
+    spark.sql("select * from kv").show()
+  }
 
-  Thread.sleep(10000)
-
-  spark.sql("select * from kv").show()
   streamingQuery.stop()
 }
