@@ -44,10 +44,9 @@ object Stock extends App {
           val content = line.split("_")(2)
             .replace("=", ",")
             .replace("\"", "")
-          //          if (content.split(",").length > 30 & content.split(",")(31) == LocalDate.now().toString) {
-          //            kafkaProducer(brokers).send(new ProducerRecord("stock-mins", content))
-          //          }
-          producer.send(new ProducerRecord("stock-mins", content))
+          if (content.split(",").length > 30) { //& content.split(",")(31) == LocalDate.now().toString
+            kafkaProducer(brokers).send(new ProducerRecord("stock-mins", content))
+          }
         }
     }
   }
