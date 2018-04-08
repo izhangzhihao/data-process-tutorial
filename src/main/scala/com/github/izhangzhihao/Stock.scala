@@ -45,7 +45,8 @@ object Stock extends App {
             .replace("=", ",")
             .replace("\"", "")
           if (content.split(",").length > 30) { //& content.split(",")(31) == LocalDate.now().toString
-            kafkaProducer(brokers).send(new ProducerRecord("stock-mins", content))
+            producer.send(new ProducerRecord("stock-mins", content))
+            Thread.sleep(10)
           }
         }
     }

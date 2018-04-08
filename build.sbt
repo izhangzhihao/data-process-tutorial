@@ -9,7 +9,7 @@ libraryDependencies ++= Seq(
   "org.apache.kafka" % "kafka-streams" % "1.1.0",
   "com.lightbend" %% "kafka-streams-scala" % "0.2.0",
   //"com.lightbend" %% "kafka-streams-query" % "0.1.1",
-  "org.json4s" %% "json4s-jackson" % "3.5.3",
+  //"org.json4s" %% "json4s-jackson" % "3.5.3",
   "com.typesafe.play" %% "play-ahc-ws-standalone" % "2.0.0-M1",
   "com.typesafe.play" %% "play-ws-standalone" % "2.0.0-M1",
   "com.typesafe.play" %% "play-ws-standalone-json" % "2.0.0-M1",
