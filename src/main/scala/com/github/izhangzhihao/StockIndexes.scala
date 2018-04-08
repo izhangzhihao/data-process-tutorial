@@ -14,7 +14,7 @@ object AmoStockIndex {
 object EMAStockIndex {
   def getValue(paras: Array[String]): Double = {
     val EMA1 = paras(0)(11).toDouble
-    var EMAs: Array[Double] = Array(EMA1)
+    val EMAs: Array[Double] = Array(EMA1)
     val k = 2.0 / (paras.length + 1)
     for (i <- paras.indices) {
       val emai = paras(i)(11).toDouble * k + EMAs.last * (1 - k)
