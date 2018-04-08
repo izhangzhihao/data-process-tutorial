@@ -96,6 +96,10 @@ object StockStream extends App {
 
   implicit val context: ExecutionContextExecutorService = asExecutionContext(Executors.newSingleThreadExecutor())
   val eventual = Future {
-    streamingQuery.awaitTermination()
+    try {
+      streamingQuery.awaitTermination()
+    } catch {
+      case e: Exception => e.printStackTrace()
+    }
   }
 }
