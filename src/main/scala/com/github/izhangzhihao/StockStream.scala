@@ -1,5 +1,6 @@
 package com.github.izhangzhihao
 
+import java.net.InetAddress
 import java.util.concurrent.Executors
 
 import org.apache.spark.sql._
@@ -16,29 +17,24 @@ object StockStream extends App {
 
   val spark: SparkSession = SparkSession.builder()
     .appName("StockStream")
-    .enableHiveSupport()
+    .master("local")
     .getOrCreate()
 
-  spark.sparkContext.setCheckpointDir("hdfs:/user/zhihao/checkpoint")
-
   import spark.implicits._
+
+  val host = InetAddress.getLocalHost.getHostAddress
 
   val df: DataFrame =
     spark
       .readStream
       .format("kafka")
-      .option("kafka.bootstrap.servers", "hdp2:6667,hdp3:6667,hdp4:6667")
+      .option("kafka.bootstrap.servers", s"$host:9092")
       .option("subscribe", "stock-mins")
       .option("startingOffsets", "earliest")
       .load()
   df.printSchema()
 
-  df.persist(StorageLevel.MEMORY_AND_DISK)
-
-  val hiveDb = "db_stock_zhihao"
-  spark.sql(s"CREATE DATABASE IF NOT EXISTS $hiveDb")
-  spark.sql(s"CREATE TABLE IF NOT EXISTS $hiveDb.stock_parameters (key STRING, value STRING) USING HIVE")
-  spark.sql(s"CREATE TABLE IF NOT EXISTS $hiveDb.stock_indexes (key STRING, type STRING, value DOUBLE, time TIMESTAMP) USING HIVE")
+  //df.persist(StorageLevel.MEMORY_ONLY)
 
   case class Stock(key: String, `type`: String, value: Double, split: String)
 
@@ -47,7 +43,6 @@ object StockStream extends App {
     .map { content =>
       val key = content.split(",")(0)
       val value = content
-      spark.sql(s"INSERT INTO $hiveDb.stock_parameters VALUES ('$key', '$value')")
 
       val indexs: Seq[Stock] = List(
         Stock(key,
@@ -59,10 +54,6 @@ object StockStream extends App {
           ObvStockIndex.getValue(value.split(",")),
           value.split(",")(32))
       )
-
-      indexs.toDF().createOrReplaceTempView("stock_index_views")
-
-      spark.sql(s"INSERT INTO $hiveDb.stock_indexes SELECT * FROM stock_index_views")
       indexs
     }
 
@@ -79,20 +70,14 @@ object StockStream extends App {
 
   import org.apache.spark.sql.functions._
 
-  val streamingQuery: StreamingQuery = result
-    //.selectExpr($"value".getItem("_1").as('key), "to_json(struct(*)) AS value")
-    //.select('value.getItem("element").getItem("_1") as 'key, to_json(struct('value.getItem("element").getItem("*"))) as 'value)
+  val streamingQuery = result
     .select(explode('value))
     .select($"col.key" as 'key, $"col.value" as 'value)
-    .as[(String, String)]
+    .as[(String, Double)]
     .writeStream
-    .format("kafka")
-    .option("kafka.bootstrap.servers", "hdp2:6667,hdp3:6667,hdp4:6667")
-    .option("topic", "stock-indexes_zhihao")
-    .option("checkpointLocation", "hdfs:/user/zhihao/kafkaCheckPoint")
+    .queryName("kv")
+    .format("memory")
     .start()
-
-  streamingQuery.explain()
 
   implicit val context: ExecutionContextExecutorService = asExecutionContext(Executors.newSingleThreadExecutor())
   val eventual = Future {
@@ -102,4 +87,12 @@ object StockStream extends App {
       case e: Exception => e.printStackTrace()
     }
   }
+
+  streamingQuery.explain()
+  println()
+
+  Thread.sleep(10000)
+
+  spark.sql("select * from kv").show()
+  streamingQuery.stop()
 }
