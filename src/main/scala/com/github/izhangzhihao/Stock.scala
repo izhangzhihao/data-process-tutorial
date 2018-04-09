@@ -44,9 +44,9 @@ object Stock extends App {
           val content = line.split("_")(2)
             .replace("=", ",")
             .replace("\"", "")
-          if (content.split(",").length > 30) { //& content.split(",")(31) == LocalDate.now().toString
+          val contents = content.split(",")
+          if (contents.length > 30) { //& contents(31) == LocalDate.now().toString
             producer.send(new ProducerRecord("stock-mins", content))
-            Thread.sleep(10)
           }
         }
     }
