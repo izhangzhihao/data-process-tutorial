@@ -70,9 +70,14 @@ class StockMACDStream {
     }
     //.groupByKey(_._1)
     //.reduceGroups((left, right) => (left._1, left._2 ++ right._2))
-    .groupBy(window('eventTime, "26 minutes"), 'key)
+
+    //.groupBy(window('eventTime, "26 minutes"), 'key)
     //.sum(reduceSumArray('value))
-    .agg(MACDUDF('key, 'value, 'evenTime))
+    //.agg(MACDUDF('key, 'value, 'evenTime))
+
+    .withColumn("window", window('eventTime, "26 minutes", "1 minutes"))
+    .groupBy('key, 'window)
+    .sum("test")
 
 
   result.printSchema()
