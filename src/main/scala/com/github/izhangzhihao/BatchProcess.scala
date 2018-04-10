@@ -53,18 +53,18 @@ object BatchProcess extends App {
 
   spark.sql(
     """
-                 SELECT COUNT(DISTINCT InvoiceNo) as Number_of_transactions FROM retail
-      """).show()
+                   SELECT COUNT(DISTINCT InvoiceNo) as Number_of_transactions FROM retail
+        """).show()
 
   spark.sql(
     """
-                 SELECT COUNT(DISTINCT StockCode) as Number_of_products_bought FROM retail
-      """).show()
+                   SELECT COUNT(DISTINCT StockCode) as Number_of_products_bought FROM retail
+        """).show()
 
   spark.sql(
     """
-                 SELECT COUNT(DISTINCT CustomerID) as Number_of_customers FROM retail
-      """).show()
+                   SELECT COUNT(DISTINCT CustomerID) as Number_of_customers FROM retail
+        """).show()
 
   retailData.select(countDistinct('CustomerID).as("Number of customers")).show()
 
@@ -73,30 +73,50 @@ object BatchProcess extends App {
   val retailDataWithDate: DataFrame = retailData.withColumn("date", to_date('InvoiceDate))
   retailDataWithDate.show(5)
 
-
-  val retailDateWithLasePurchaseDate: Dataset[Row] = retailDataWithDate
+  val retailDataWithLasePurchaseDate: Dataset[Row] = retailDataWithDate
     .groupBy('CustomerID)
     .agg(max('date) as "LastPurchaseDate")
 
-  retailDateWithLasePurchaseDate.show()
+  retailDataWithLasePurchaseDate.show()
+
+  //To calculate recency, we need to choose a date point from which we evaluate how many days ago was the customer's last purchase.
+
+  val retailDataWithRecency: DataFrame = retailDataWithLasePurchaseDate
+    .withColumn("today", to_date(expr(""""2011-12-09"""")))
+    .withColumn("Recency", datediff('today, 'LastPurchaseDate))
+    .drop("today", "LastPurchaseDate")
+  retailDataWithRecency
+    .show()
 
   //Frequency helps us to know how many times a customer purchased from us.
   //To do that we need to check how many invoices are registered by the same customer.
 
-  retailDateWithLasePurchaseDate
-    .withColumn("today", to_date(expr(""""2011-12-09"""")))
-    .withColumn("Recency", datediff('today, 'LastPurchaseDate))
+  val retailDataWithFrequency: DataFrame = retailData
+    .groupBy('CustomerID)
+    .count()
+    .withColumnRenamed("count", "Frequency")
+
+  retailDataWithFrequency
     .show()
+
 
   //Monetary attribute answers the question: How much money did the customer spent over time?
 
-
-  retailData
-    .withColumn("TotalCost", expr("Quantity * UnitPrice"))
+  val retailDateWithMonetary: DataFrame = retailData
+    .withColumn("cost", expr("Quantity * UnitPrice"))
     .groupBy('CustomerID)
-    .sum("TotalCost")
-    .show()
+    .sum("cost")
+    .withColumnRenamed("sum(cost)", "TotalCost")
 
+  retailDateWithMonetary.show()
+
+
+  //Create RFM Table
+
+  retailDataWithRecency
+    .join(retailDataWithFrequency, "CustomerID")
+    .join(retailDateWithMonetary, "CustomerID")
+    .show()
 
   //retailData.write.json("data/retail-data/all/online-retail-dataset")
 }
