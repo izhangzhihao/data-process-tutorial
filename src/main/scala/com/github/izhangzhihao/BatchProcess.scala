@@ -24,7 +24,7 @@ object BatchProcess extends App {
     .option("inferSchema", "true")
     .option("header", "true")
     .csv("data/retail-data/by-day/*.csv")
-    .repartition(4)
+    .repartition(8)
 
   originData.printSchema()
 
@@ -106,7 +106,7 @@ object BatchProcess extends App {
     .withColumn("cost", expr("Quantity * UnitPrice"))
     .groupBy('CustomerID)
     .sum("cost")
-    .withColumnRenamed("sum(cost)", "TotalCost")
+    .withColumnRenamed("sum(cost)", "Monetary")
 
   retailDateWithMonetary.show()
 
@@ -120,6 +120,26 @@ object BatchProcess extends App {
   RFMTable.show()
 
   retailData.where('CustomerID === "13832").show()
+
+  //Applying 80-20 rule
+
+  RFMTable.createOrReplaceTempView("RFMTable")
+
+  spark.sql(
+    """
+      SELECT sum(Monetary) * 0.8 as `The 80% of total revenue` FROM RFMTable
+    """).show()
+
+
+  RFMTable
+    .orderBy(desc("Monetary"))
+    .limit((3863 * 0.2).toInt)
+    .select(sum('Monetary) as "The revenue of top 20% of customers")
+    .show()
+
+  // 5,646,700.091200001 VS 5,158,179.370999999
+  //In our case, the 80% of total revenue is not achieved by the 20% of TOP customers but approximately, it does, because they are less than our 20% TOP customers who achieve it. It would be interesting to study this group of customers because they are those who make our most revenue.
+
 
   //retailData.write.json("data/retail-data/all/online-retail-dataset")
 }
