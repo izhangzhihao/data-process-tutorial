@@ -37,7 +37,7 @@ Spark 的优点：
 * Executors: Application 运行在 Worker 节点上的一个进程，该进程负责运行 Task，并且负责将数据存在内存或者磁盘上，每个 Application 都有各自独立的一批 Executor。
 * Worker: 集群中任何可以运行 Application 代码的节点，类似于 YARN 的 NodeManager 节点。
 * Cluster Manager: 指的是在集群上获取资源的外部服务（Hadoop Yarn: 由 YARN 中的 ResourceManager 负责资源的分配）
-md
+
 一个 job 的提交：
 
 1. 构建Spark Application的运行环境，启动 SparkSession
