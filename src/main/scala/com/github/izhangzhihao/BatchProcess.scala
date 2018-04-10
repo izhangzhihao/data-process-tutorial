@@ -210,12 +210,45 @@ object BatchProcess extends App {
 
   import UDFUtils._
 
-  RFMTable
+  val RFMScore: DataFrame = RFMTable
     .withColumn("R_Quartile", R_QuartileUDF('Recency))
     .withColumn("F_Quartile", expr("F_Quartile(Frequency)"))
     .withColumn("M_Quartile", callUDF("M_Quartile", 'Monetary))
-    .show()
+    .withColumn("RFMScore", concat('R_Quartile, 'F_Quartile, 'M_Quartile))
 
+  RFMScore.show()
 
-  //retailData.write.json("data/retail-data/all/online-retail-dataset")
+  RFMScore.orderBy('RFMScore.desc).show(5)
+
+  RFMScore.createOrReplaceTempView("RFMScore")
+
+  spark.sql(
+    """
+                   SELECT COUNT(CustomerID) as `Best Customers` FROM RFMScore where RFMScore=444
+        """).show()
+
+  spark.sql(
+    """
+                   SELECT COUNT(CustomerID) as `Loyal Customers` FROM RFMScore where F_Quartile=4
+        """).show()
+
+  spark.sql(
+    """
+                   SELECT COUNT(CustomerID) as `Big Spenders` FROM RFMScore where M_Quartile=4
+        """).show()
+
+  spark.sql(
+    """
+                   SELECT COUNT(CustomerID) as `Almost Lost` FROM RFMScore where RFMScore=244
+        """).show()
+
+  spark.sql(
+    """
+                   SELECT COUNT(CustomerID) as `Lost Customers` FROM RFMScore where RFMScore=144
+        """).show()
+
+  spark.sql(
+    """
+                   SELECT COUNT(CustomerID) as `Lost Cheap Customers` FROM RFMScore where RFMScore=111
+        """).show()
 }
