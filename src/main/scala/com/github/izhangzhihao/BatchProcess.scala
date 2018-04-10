@@ -113,10 +113,13 @@ object BatchProcess extends App {
 
   //Create RFM Table
 
-  retailDataWithRecency
+  val RFMTable: DataFrame = retailDataWithRecency
     .join(retailDataWithFrequency, "CustomerID")
     .join(retailDateWithMonetary, "CustomerID")
-    .show()
+
+  RFMTable.show()
+
+  retailData.where('CustomerID === "13832").show()
 
   //retailData.write.json("data/retail-data/all/online-retail-dataset")
 }
