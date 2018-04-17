@@ -1,0 +1,56 @@
+version: '2'
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+      - "2888:2888"
+      - "3888:3888"
+    container_name: zookeeper
+  kafka:
+    image: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      #export DOCKER_KAFKA_HOST=$(ipconfig getifaddr en0)
+      KAFKA_ADVERTISED_HOST_NAME: ${DOCKER_KAFKA_HOST}
+      KAFKA_ADVERTISED_LISTENERS: ${DOCKER_KAFKA_HOST}
+      KAFKA_ZOOKEEPER_CONNECT: ${DOCKER_KAFKA_HOST}:2181
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    container_name: kafka
+#  maxwell:
+#    image: zendesk/maxwell
+#    links:
+#      - mysql
+#      - kafka
+#    environment:
+#      - user=root
+#      - password=root
+#      - host=${DOCKER_KAFKA_HOST}
+#      - producer=kafka
+#      - kafka.bootstrap.servers=${DOCKER_KAFKA_HOST}:2181
+#    container_name: maxwell
+  connect:
+    image: debezium/connect:0.8
+    ports:
+      - 8083:8083
+    links:
+      - kafka
+      - mysql
+    environment:
+      - GROUP_ID=1
+      - BOOTSTRAP_SERVERS=${DOCKER_KAFKA_HOST}:9092
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+  mysql:
+    #image: debezium/example-mysql:0.8
+    build: ./mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=data
+      - MYSQL_USER=mysqluser
+      - MYSQL_PASSWORD=mysqlpw
+      - MYSQL_ROOT_PASSWORD=debezium
+    container_name: mysql
