@@ -6,8 +6,10 @@ services:
       - "2181:2181"
       - "2888:2888"
       - "3888:3888"
+    container_name: zookeeper
   kafka:
     build: .
+    image: kafka
     ports:
       - "9092:9092"
     environment:
@@ -17,6 +19,7 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: ${DOCKER_KAFKA_HOST}:2181
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    container_name: kafka
 #  schema_registry:
 #    image: confluentinc/cp-schema-registry
 #    hostname: schema_registry

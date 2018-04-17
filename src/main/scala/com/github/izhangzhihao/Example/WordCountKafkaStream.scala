@@ -1,4 +1,4 @@
-package com.github.izhangzhihao.Example
+package com.github.izhangzhihao.example
 
 import java.net.InetAddress
 import java.util.Properties

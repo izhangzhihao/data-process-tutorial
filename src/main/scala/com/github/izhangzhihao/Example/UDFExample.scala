@@ -1,4 +1,4 @@
-package com.github.izhangzhihao.Example
+package com.github.izhangzhihao.example
 
 import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession

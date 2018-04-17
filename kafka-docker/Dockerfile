@@ -1,13 +1,11 @@
 FROM anapsix/alpine-java
 
-ARG kafka_version=1.0.1
+ARG kafka_version=1.1.0
 ARG scala_version=2.12
-
-MAINTAINER wurstmeister
 
 ENV KAFKA_VERSION=$kafka_version \
     SCALA_VERSION=$scala_version \
-    KAFKA_HOME=/opt/kafka 
+    KAFKA_HOME=/opt/kafka
 
 ENV PATH=${PATH}:${KAFKA_HOME}/bin
 
