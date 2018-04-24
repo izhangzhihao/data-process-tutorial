@@ -15,6 +15,7 @@ object kafka {
       "org.apache.kafka.common.serialization.StringSerializer")
     props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
       "org.apache.kafka.common.serialization.StringSerializer")
+    props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true") // https://www.confluent.io/blog/exactly-once-semantics-are-possible-heres-how-apache-kafka-does-it/
 
     new KafkaProducer[String, String](props)
   }

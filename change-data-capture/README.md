@@ -35,3 +35,7 @@ UPDATE customers set first_name = "first_name" where email = "gbailey@foobar.com
 
 # Shut down the cluster
 docker-compose down
+
+# More
+
+http://debezium.io/blog/2017/09/25/streaming-to-another-database/
