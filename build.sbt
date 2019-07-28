@@ -1,12 +1,13 @@
 val sparkVersion = "2.3.0"
 
 libraryDependencies ++= Seq(
-  "org.apache.spark" %% "spark-core" % sparkVersion,
-  "org.apache.spark" %% "spark-sql" % sparkVersion,
-  "org.apache.spark" %% "spark-mllib" % sparkVersion,
+  "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
+  "org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
+  "org.apache.spark" %% "spark-mllib" % sparkVersion % "provided",
   "org.apache.spark" %% "spark-sql-kafka-0-10" % sparkVersion,
-  "org.apache.kafka" %% "kafka" % "1.1.0",
-  "org.apache.kafka" % "kafka-streams" % "1.1.0",
+  "org.apache.kafka" %% "kafka" % "1.1.0" % "provided",
+  "org.apache.kafka" % "kafka-streams" % "1.1.0" % "provided",
+  "org.json4s" %% "json4s-jackson" % "3.5.3",
   "com.lightbend" %% "kafka-streams-scala" % "0.2.0",
   //"com.lightbend" %% "kafka-streams-query" % "0.1.1",
   //"org.json4s" %% "json4s-jackson" % "3.5.3",
@@ -28,3 +29,18 @@ resolvers ++= Seq(
 
 javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
 //scalacOptions := Seq("-Xexperimental", "-unchecked", "-deprecation", "-Ywarn-unused-import")
+
+//assemblyMergeStrategy in assembly := (_ => MergeStrategy.first)
+
+assemblyMergeStrategy in assembly := {
+{
+  case m if m.toLowerCase.endsWith("manifest.mf") => MergeStrategy.discard
+  case m if m.startsWith("META-INF") => MergeStrategy.first
+  case PathList("javax", "servlet", xs @ _*) => MergeStrategy.first
+  case PathList("org", "apache", xs @ _*) => MergeStrategy.first
+  case PathList("org", "jboss", xs @ _*) => MergeStrategy.first
+  case "about.html"  => MergeStrategy.rename
+  case "reference.conf" => MergeStrategy.concat
+  case _ => MergeStrategy.first
+}
+}

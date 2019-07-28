@@ -10,20 +10,22 @@ import org.apache.spark.sql._
   */
 object BatchProcess extends App {
 
-  val spark = SparkSession.builder()
-    .appName("BatchProcess")
-    .master("local[*]")
-    .getOrCreate()
+//  val spark = SparkSession.builder()
+//    .appName("BatchProcess")
+//    .master("local[*]")
+//    .getOrCreate()
+
+  val spark =
+    SparkSession.builder.appName("Simple BatchProcess").getOrCreate()
 
   import spark.implicits._
   import org.apache.spark.sql.functions._
   import org.apache.spark.sql.types._
 
-  val originData = spark
-    .read
+  val originData = spark.read
     .option("inferSchema", "true")
     .option("header", "true")
-    .csv("data/retail-data/by-day/*.csv")
+    .csv("hdfs:///data/retail-data/by-day/*.csv")
     .repartition(8)
 
   originData.printSchema()
@@ -34,7 +36,9 @@ object BatchProcess extends App {
       $"StockCode",
       $"Description",
       $"Quantity",
-      date_format($"InvoiceDate", "yyyy-MM-dd HH:mm:ss").cast(DataTypes.TimestampType).as("InvoiceDate"),
+      date_format($"InvoiceDate", "yyyy-MM-dd HH:mm:ss")
+        .cast(DataTypes.TimestampType)
+        .as("InvoiceDate"),
       $"UnitPrice",
       $"CustomerID".cast("int"),
       $"Country"
@@ -44,25 +48,27 @@ object BatchProcess extends App {
     .filter('InvoiceDate gt lit("2010-12-09")) // restrict the data to one full year because it's better to use a metric per Months or Years
     .where("CustomerID is not null") //remove rows where customerID are NA
 
-
   retailData.printSchema()
 
   retailData.show()
 
   retailData.createOrReplaceTempView("retail")
 
-  spark.sql(
-    """
+  spark
+    .sql("""
                    SELECT COUNT(DISTINCT InvoiceNo) as Number_of_transactions FROM retail
-        """).show()
+        """)
+    .show()
 
-  spark.sql(
-    """
+  spark
+    .sql(
+      """
                    SELECT COUNT(DISTINCT StockCode) as Number_of_products_bought FROM retail
-        """).show()
+        """
+    )
+    .show()
 
-  spark.sql(
-    """
+  spark.sql("""
                    SELECT COUNT(DISTINCT CustomerID) as Number_of_customers FROM retail
         """).show()
 
@@ -70,7 +76,8 @@ object BatchProcess extends App {
 
   retailData.select(max('InvoiceDate) as "last date").show()
 
-  val retailDataWithDate: DataFrame = retailData.withColumn("date", to_date('InvoiceDate))
+  val retailDataWithDate: DataFrame =
+    retailData.withColumn("date", to_date('InvoiceDate))
   retailDataWithDate.show(5)
 
   val retailDataWithLasePurchaseDate: Dataset[Row] = retailDataWithDate
@@ -97,7 +104,6 @@ object BatchProcess extends App {
 
   retailDataWithFrequency.show()
 
-
   //Monetary attribute answers the question: How much money did the customer spent over time?
 
   val retailDateWithMonetary: DataFrame = retailData
@@ -107,7 +113,6 @@ object BatchProcess extends App {
     .withColumnRenamed("sum(cost)", "Monetary")
 
   retailDateWithMonetary.show()
-
 
   //Create RFM Table
 
@@ -123,11 +128,11 @@ object BatchProcess extends App {
 
   RFMTable.createOrReplaceTempView("RFMTable")
 
-  spark.sql(
-    """
+  spark
+    .sql("""
       SELECT sum(Monetary) * 0.8 as `The 80% of total revenue` FROM RFMTable
-    """).show()
-
+    """)
+    .show()
 
   RFMTable
     .orderBy(desc("Monetary"))
@@ -141,7 +146,9 @@ object BatchProcess extends App {
   //Applying RFM score formula
 
   private def getQuartiles(col: String) = {
-    Array(0.25, 0.50, 0.75).zip(RFMTable.stat.approxQuantile(col, Array(0.25, 0.50, 0.75), 0.05)).toMap
+    Array(0.25, 0.50, 0.75)
+      .zip(RFMTable.stat.approxQuantile(col, Array(0.25, 0.50, 0.75), 0.05))
+      .toMap
   }
 
   val recencyQuartiles = getQuartiles("Recency")
@@ -164,7 +171,7 @@ object BatchProcess extends App {
         case v if v <= dict(0.25) => 4
         case v if v <= dict(0.50) => 3
         case v if v <= dict(0.75) => 2
-        case _ => 1
+        case _                    => 1
       }
 
     /**
@@ -179,9 +186,8 @@ object BatchProcess extends App {
         case v if v <= dict(0.25) => 1
         case v if v <= dict(0.50) => 2
         case v if v <= dict(0.75) => 3
-        case _ => 4
+        case _                    => 4
       }
-
 
     def R_Quartile(value: Double) = {
       RScore(value, recencyQuartiles)
@@ -222,33 +228,31 @@ object BatchProcess extends App {
 
   RFMScore.createOrReplaceTempView("RFMScore")
 
-  spark.sql(
-    """
+  spark.sql("""
                    SELECT COUNT(CustomerID) as `Best Customers` FROM RFMScore where RFMScore=444
         """).show()
 
-  spark.sql(
-    """
+  spark.sql("""
                    SELECT COUNT(CustomerID) as `Loyal Customers` FROM RFMScore where F_Quartile=4
         """).show()
 
-  spark.sql(
-    """
+  spark.sql("""
                    SELECT COUNT(CustomerID) as `Big Spenders` FROM RFMScore where M_Quartile=4
         """).show()
 
-  spark.sql(
-    """
+  spark
+    .sql(
+      """
                    SELECT COUNT(CustomerID) as `Almost Lost` FROM RFMScore where RFMScore=244
-        """).show()
+        """
+    )
+    .show()
 
-  spark.sql(
-    """
+  spark.sql("""
                    SELECT COUNT(CustomerID) as `Lost Customers` FROM RFMScore where RFMScore=144
         """).show()
 
-  spark.sql(
-    """
+  spark.sql("""
                    SELECT COUNT(CustomerID) as `Lost Cheap Customers` FROM RFMScore where RFMScore=111
         """).show()
 }
