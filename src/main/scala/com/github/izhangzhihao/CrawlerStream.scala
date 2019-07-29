@@ -29,10 +29,10 @@ object CrawlerStream extends App {
 
   val hiveTable = "data_stats_gov_cn"
   spark.sql(s"""CREATE TABLE IF NOT EXISTS default.$hiveTable
-       (value DOUBLE, quota_name STRING,
-       quota_type array<STRING>, object STRING,
+       (value DOUBLE, quotaName STRING,
+       quotaType array<STRING>, `object` STRING,
        period STRING, date STRING,
-       column_name STRING, source STRING
+       columnName STRING, source STRING
        ) USING hive""")
 
   case class Quota(value: Double,
@@ -71,8 +71,14 @@ object CrawlerStream extends App {
         return null
       }
       val quotaName = (zb.head \ "cname").extract[String]
-      val `object` = "全国"
-      val period = "???"
+      if (quotaName == null || quotaName.isEmpty) {
+        return null
+      }
+      val `object` = if (columnName.contains("hg")) "全国" else "TODO"
+      val period =
+        if (columnName.contains("yd")) "月度"
+        else if (columnName.contains("jd")) "季度"
+        else "年度"
       val date = (codeToSJ(
         ((it \ "wds")
           .extract[List[JValue]]
@@ -137,6 +143,6 @@ object CrawlerStream extends App {
     }
     .write
     .format("hive")
-    .mode(SaveMode.Overwrite)
+    .mode(SaveMode.Append)
     .saveAsTable("data_stats_gov_cn")
 }
